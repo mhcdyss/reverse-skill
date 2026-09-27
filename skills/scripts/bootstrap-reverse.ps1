@@ -224,7 +224,9 @@ function Ensure-AnythingAnalyzerMcpConfig {
             New-Item -ItemType Directory -Path $userDataPath -Force | Out-Null
         }
         $configPath = Join-Path $userDataPath 'mcp-server-config.json'
-        $payload | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -Encoding utf8
+        # Write without a UTF-8 BOM: the Electron app parses this file with JSON.parse,
+        # which throws on a leading BOM and silently falls back to enabled=false.
+        [System.IO.File]::WriteAllText($configPath, ($payload | ConvertTo-Json -Depth 4), [System.Text.UTF8Encoding]::new($false))
     }
 
     return $token
@@ -426,7 +428,7 @@ function Expand-ArchiveIntoDirectory {
     }
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 
-    $children = Get-ChildItem -LiteralPath $tempExtract
+    $children = @(Get-ChildItem -LiteralPath $tempExtract)
     if ($children.Count -eq 1 -and $children[0].PSIsContainer) {
         $sourceDir = $children[0].FullName
     }
